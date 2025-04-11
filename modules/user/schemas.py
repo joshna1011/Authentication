@@ -1,9 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
+from typing import Literal
 
 class UserCreate(BaseModel):
     name: str
     email: str
-    password: str
+    password: str | None = None
     phone: str | None = None
     bio: str | None = None
     image_url: str | None = None
@@ -16,10 +17,6 @@ class UserUpdate(BaseModel):
     bio: str | None = None
     image_url: str | None = None
 
-class UserOut(BaseModel):
-    id: int
-    name: str
-    email: str
-
-    class Config:
-        orm_mode = True
+class LoginRequest(BaseModel):
+    email: str | None = None
+    password: str | None = None

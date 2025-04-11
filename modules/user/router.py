@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi.responses import RedirectResponse
 from .utils.response import success_response, failure_response
-from .schemas import UserCreate, UserUpdate
-from .services import UserService
+from .schemas import UserCreate, UserUpdate, LoginRequest
+from .services import UserService, AuthService
 
 from sqlalchemy.orm import Session
 from database import get_db
 from typing import Union
+import os
+import urllib.parse
 
 router = APIRouter()
 
@@ -85,3 +88,49 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
         return success_response(data=user, message="User details fetched successfully")
     except Exception as e:
         return failure_response(message=str(e))
+
+@router.post("/login")
+def login(data: LoginRequest, db: Session = Depends(get_db)):
+    auth_service = AuthService(db)
+    if data.provider == "email":
+        return auth_service.login_with_email(data.email, data.password)
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported login provider")
+
+@router.get("/login/google")
+def login_with_google():
+    base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+    params = {
+        "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+        "redirect_uri": os.getenv("GOOGLE_REDIRECT_URI"),
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+        "prompt": "consent"
+    }
+    url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    return RedirectResponse(url)
+
+@router.get("/auth/google/callback")
+def google_callback(code: str, db: Session = Depends(get_db)):
+    auth_service = AuthService(db)
+    auth_service.verify_google_token(code)
+    return success_response(data={}, message="Google callback received")
+
+@router.get("/login/facebook")
+def login_with_facebook():
+    fb_auth_url = "https://www.facebook.com/v18.0/dialog/oauth"
+    params = {
+        "client_id": os.getenv("FACEBOOK_CLIENT_ID"),
+        "redirect_uri": os.getenv("FACEBOOK_REDIRECT_URI"),
+        "response_type": "code",
+        "scope": "email",
+    }
+    url = f"{fb_auth_url}?{urllib.parse.urlencode(params)}"
+    return RedirectResponse(url)
+
+@router.get("/auth/facebook/callback")
+def facebook_callback(code: str, db: Session = Depends(get_db)):
+    auth_service = AuthService(db)
+    auth_service.verify_facebook_token(code)
+    return success_response(data={}, message="Facebook callback received")

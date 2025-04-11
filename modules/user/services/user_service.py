@@ -2,8 +2,8 @@ import os
 import shutil
 
 from sqlalchemy.orm import Session
-from .repositories import repository
-from .schemas import UserUpdate
+from ..repositories import Repository
+from ..schemas import UserUpdate
 from passlib.hash import bcrypt
 from uuid import uuid4
 from fastapi import UploadFile
@@ -12,7 +12,7 @@ from typing import Optional, Union
 
 class UserService:
     def __init__(self, db: Session):
-        self.repo = repository(db)
+        self.repo = Repository(db)
     
     async def register_user_with_image_or_url(
         self,

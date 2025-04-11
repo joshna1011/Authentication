@@ -4,7 +4,7 @@ from passlib.hash import bcrypt
 from . import schemas
 from .models import User
 
-class repository:
+class Repository:
     def __init__(self, db: Session):
         self.db = db
 
