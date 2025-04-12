@@ -7,11 +7,18 @@ from ..schemas import LoginRequest
 from dotenv import load_dotenv 
 from google.oauth2 import id_token
 from google.auth.transport import requests
+from datetime import datetime, timedelta
+
 import os
 import requests as httpx
+import jwt
+
 
 load_dotenv()
 
+SECRET_KEY = "sherlock-ai"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 class AuthService:
     def __init__(self, db: Session):
         self.db = db
@@ -19,14 +26,31 @@ class AuthService:
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         return bcrypt.verify(plain_password, hashed_password)
+    
+    def create_access_token(self, data: dict, expires_delta: timedelta = None):
+        to_encode = data.copy()
+        expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return encoded_jwt
 
-    def login(self, data: LoginRequest) -> User:
+    def login_with_email(self, data: LoginRequest) -> User:
         email = data.email
         password = data.password
         user = self.repo.get_user_by_email(email)
         if not user or not self.verify_password(password, user.hashed_password):
             raise HTTPException(status_code=401, detail="Invalid email or password")
-        return user
+        access_token = self.create_access_token(data={"user_id": str(user.id)})
+        data = {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "name": user.name,
+                }
+                }
+        return data
 
     def verify_google_token(self, code: str) -> str:
         google_client_id = os.getenv("GOOGLE_CLIENT_ID")
@@ -61,10 +85,20 @@ class AuthService:
                 raise ValueError("Email not found in token")
             name = idinfo.get("name")
             picture = idinfo.get("picture")
-            self.repo.get_user_by_email(email)  # Check if user exists
+            user = self.repo.get_user_by_email(email)  # Check if user exists
             if not self.repo.get_user_by_email(email):
-                self.repo.create_user({"name": name, "email": email, "image_url": picture})  # Create user if not exists
-            return email
+                user = self.repo.create_user({"name": name, "email": email, "image_url": picture})  # Create user if not exists
+            access_token = self.create_access_token(data={"user_id": str(user.id)})
+            data = {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "name": user.name,
+                }
+                }
+            return data
         except ValueError as e:
             raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
         
@@ -102,4 +136,14 @@ class AuthService:
         name = user_info.get("name")
         if not user:
             self.repo.create_user({"name": name, "email": email})  # Create user if not exists
-        return user
+        access_token = self.create_access_token(data={"user_id": str(user.id)})
+        data = {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+            }
+            }
+        return data

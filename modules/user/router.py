@@ -89,14 +89,14 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         return failure_response(message=str(e))
 
-@router.post("/login")
+@router.post("/login/email")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
-    auth_service = AuthService(db)
-    if data.provider == "email":
-        return auth_service.login_with_email(data.email, data.password)
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported login provider")
-
+    try:
+        auth_service = AuthService(db)
+        return auth_service.login_with_email(data)
+    except Exception as e:
+        return failure_response(message=str(e))
+  
 @router.get("/login/google")
 def login_with_google():
     base_url = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -114,8 +114,8 @@ def login_with_google():
 @router.get("/auth/google/callback")
 def google_callback(code: str, db: Session = Depends(get_db)):
     auth_service = AuthService(db)
-    auth_service.verify_google_token(code)
-    return success_response(data={}, message="Google callback received")
+    data = auth_service.verify_google_token(code)
+    return success_response(data=data, message="Google callback received")
 
 @router.get("/login/facebook")
 def login_with_facebook():
@@ -132,5 +132,10 @@ def login_with_facebook():
 @router.get("/auth/facebook/callback")
 def facebook_callback(code: str, db: Session = Depends(get_db)):
     auth_service = AuthService(db)
-    auth_service.verify_facebook_token(code)
+    data = auth_service.verify_facebook_token(code)
+    return success_response(data=data, message="Facebook callback received")
+
+@router.post("/logout")
+def logout():
+    # Frontend should just delete the token
     return success_response(data={}, message="Facebook callback received")
