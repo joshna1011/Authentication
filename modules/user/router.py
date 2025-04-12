@@ -42,7 +42,7 @@ async def register_user(
     except Exception as e:
         return failure_response(message=str(e))
     
-@router.put("/user/update/{user_id}")
+@router.put("/update/{user_id}")
 def update_user(
     user_id: int,
     name: str = Form(None),
@@ -51,7 +51,7 @@ def update_user(
     phone: str = Form(None),
     bio: str = Form(None),
     image_url: str = Form(None),
-    image: UploadFile = File(None),
+    image: Union[UploadFile, str, None] = File(None),
     db: Session = Depends(get_db)
 ):
     try:
@@ -99,43 +99,55 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
   
 @router.get("/login/google")
 def login_with_google():
-    base_url = "https://accounts.google.com/o/oauth2/v2/auth"
-    params = {
-        "client_id": os.getenv("GOOGLE_CLIENT_ID"),
-        "redirect_uri": os.getenv("GOOGLE_REDIRECT_URI"),
-        "response_type": "code",
-        "scope": "openid email profile",
-        "access_type": "offline",
-        "prompt": "consent"
-    }
-    url = f"{base_url}?{urllib.parse.urlencode(params)}"
-    return RedirectResponse(url)
+    try:
+        base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+        params = {
+            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+            "redirect_uri": os.getenv("GOOGLE_REDIRECT_URI"),
+            "response_type": "code",
+            "scope": "openid email profile",
+            "access_type": "offline",
+            "prompt": "consent"
+        }
+        url = f"{base_url}?{urllib.parse.urlencode(params)}"
+        return RedirectResponse(url)
+    except Exception as e:
+        return failure_response(message=str(e))
 
 @router.get("/auth/google/callback")
 def google_callback(code: str, db: Session = Depends(get_db)):
-    auth_service = AuthService(db)
-    data = auth_service.verify_google_token(code)
-    return success_response(data=data, message="Google callback received")
+    try:
+        auth_service = AuthService(db)
+        data = auth_service.verify_google_token(code)
+        return success_response(data=data, message="Google callback received")
+    except Exception as e:
+        return failure_response(message=str(e))
 
 @router.get("/login/facebook")
 def login_with_facebook():
-    fb_auth_url = "https://www.facebook.com/v18.0/dialog/oauth"
-    params = {
-        "client_id": os.getenv("FACEBOOK_CLIENT_ID"),
-        "redirect_uri": os.getenv("FACEBOOK_REDIRECT_URI"),
-        "response_type": "code",
-        "scope": "email",
-    }
-    url = f"{fb_auth_url}?{urllib.parse.urlencode(params)}"
-    return RedirectResponse(url)
+    try:
+        fb_auth_url = "https://www.facebook.com/v18.0/dialog/oauth"
+        params = {
+            "client_id": os.getenv("FACEBOOK_CLIENT_ID"),
+            "redirect_uri": os.getenv("FACEBOOK_REDIRECT_URI"),
+            "response_type": "code",
+            "scope": "email",
+        }
+        url = f"{fb_auth_url}?{urllib.parse.urlencode(params)}"
+        return RedirectResponse(url)
+    except Exception as e:
+        return failure_response(message=str(e))
 
 @router.get("/auth/facebook/callback")
 def facebook_callback(code: str, db: Session = Depends(get_db)):
-    auth_service = AuthService(db)
-    data = auth_service.verify_facebook_token(code)
-    return success_response(data=data, message="Facebook callback received")
+    try:
+        auth_service = AuthService(db)
+        data = auth_service.verify_facebook_token(code)
+        return success_response(data=data, message="Facebook callback received")
+    except Exception as e:
+        return failure_response(message=str(e))
 
 @router.post("/logout")
 def logout():
     # Frontend should just delete the token
-    return success_response(data={}, message="Facebook callback received")
+    return success_response(data={}, message="Successfully logged out")

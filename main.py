@@ -6,14 +6,14 @@ from fastapi.templating import Jinja2Templates
 
 app = FastAPI()
 app.include_router(user_router, prefix="/user", tags=["User"]) 
-app.include_router(binance_router, prefix="/binance", tags=["User"])
-app.include_router(weather_router, prefix="/weather", tags=["User"]) 
+app.include_router(binance_router, prefix="/binance", tags=["Binance"])
+app.include_router(weather_router, prefix="/weather", tags=["Weather"]) 
 templates = Jinja2Templates(directory="templates") 
 
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
+    return {"status": "success", "message": "I am working!"}
 
 @app.get("/login-template")
 def home(request: Request):

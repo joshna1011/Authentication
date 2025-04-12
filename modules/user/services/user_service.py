@@ -79,7 +79,7 @@ class UserService:
 
         update_dict = update_data.model_dump(exclude_unset=True)
 
-        if "password" in update_dict:
+        if "password" in update_dict and update_dict["password"]:
             update_dict["hashed_password"] = bcrypt.hash(update_dict.pop("password"))
 
         # Handle image upload
@@ -94,7 +94,8 @@ class UserService:
 
         # Apply all updates
         for key, value in update_dict.items():
-            setattr(user, key, value)
+            if value:
+                setattr(user, key, value)
 
         self.repo.update_user(user)
         return user
